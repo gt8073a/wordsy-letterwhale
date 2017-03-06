@@ -1,3 +1,8 @@
+.*.swp
+
+# configs
+wordsy.yaml
+
 # Logs
 logs
 *.log

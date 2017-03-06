@@ -1,0 +1,9 @@
+{
+  "name": "Wordsy Letterwhale",
+  "version": "v0.0.1",
+  "private": false,
+  "dependencies": {
+    "botkit": "^0.5.1",
+    "yaml-configuration-loader": "^1.0.2"
+  }
+}
