@@ -1,5 +1,7 @@
 {
-  "name": "Wordsy Letterwhale",
+  "name": "wordsy-letterwhale",
+  "description": "word game for slack",
+  "repository": "git@github.com:gt8073a/wordsy-letterwhale.git",
   "version": "v0.0.1",
   "private": false,
   "dependencies": {
