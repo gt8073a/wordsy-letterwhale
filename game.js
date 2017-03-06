@@ -76,9 +76,10 @@ module.exports = function(args) {
 			self.GET_PLAYER_NAME(user,self._setUserName)
 		}
 
-		var thisScoreLog = self.scoreWord(word);
-		self.rememberWord( word, user);
-		self.scorePoints( user, word, thisScoreLog.points, thisScoreLog.reason );
+		var thisWord = word.toLowerCase();
+		var thisScoreLog = self.scoreWord(thisWord);
+		self.rememberWord( thisWord, user);
+		self.scorePoints( user, thisWord, thisScoreLog.points, thisScoreLog.reason );
 
 		return thisScoreLog;
 
