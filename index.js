@@ -76,7 +76,7 @@ var init = function() {
 	slack.hears('^help', 'direct_mention', function( bot, msg ) {
 
 		var helpMsg  = myName + " is a word game. I'll show you letters, you make words.\n"
-		                      + "  You get 45 seconds.\n"
+		                      + "  You get " + ( config.TIME_OF_GAME || 45 ) + " seconds.\n"
 		                      + "  Good Words earn you points.\n"
 		                      + "  Bad Words earn you negative points.\n"
 		                      + "  Dupes earn you a lot of negative points.\n",
