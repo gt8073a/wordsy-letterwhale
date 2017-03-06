@@ -317,6 +317,7 @@ module.exports = function(args) {
 
 			}
 
+			thisUserHash.points = Math.floor( thisUserHash.points );
 			points.push( thisUserHash );
 		}
 

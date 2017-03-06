@@ -75,11 +75,17 @@ var init = function() {
 
 	slack.hears('^help', 'direct_mention', function( bot, msg ) {
 
-		var helpMsg  = myName + " is a word game. I'll show you letters, you make words.\n",
-		    helpOpts = "To start a game, enter\n   @"           + myName + " start a game\n"
+		var helpMsg  = myName + " is a word game. I'll show you letters, you make words.\n"
+		                      + "  You get 45 seconds.\n"
+		                      + "  Good Words earn you points.\n"
+		                      + "  Bad Words earn you negative points.\n"
+		                      + "  Dupes earn you a lot of negative points.\n",
+		    helpOpts = "To start a game:\n   @"                 + myName + " start a game\n"
+		              + "To play a word in a game:\n  "                  + " type it in and hit return\n"
+			      + "To end a game early:\n   @"            + myName + " game over\n"
+		              + "To see time left in a game:\n   @"     + myName + " time left\n"
 			      + "To see the scoreboard:\n   @"          + myName + " score\n"
-			      + "To see the letters in a game:\n   @"   + myName + " letters\n"
-			      + "To end a game earlier:\n   @"          + myName + " game over\n";
+			      + "To see the letters in a game:\n   @"   + myName + " letters\n";
 
 		helpOpts.replace( / /, 0xC2, 'g' );
 
