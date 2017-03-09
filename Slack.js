@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 
-
 var Config = require('yaml-configuration-loader'),
     config = Config.load( process.env.CONFIG || ( __dirname + '/config/default.yaml' ) );
 
@@ -36,37 +35,37 @@ var loadDictionary = function(file,fn) {
 	fn();
 }
 
-var Game = require('./game.js');
+var Game = require('./lib/Game.js');
 
 /* channel => new game.js */
 var theseGames = {};
 var createGame = function( bot, msg ) {
 	var thisConf            = JSON.parse(JSON.stringify(config));
-	thisConf.SEND_MSG_FN    = function( txt, opts, fn ) {
-						opts = opts || '';
-						var thisMsg = txt;
-						if ( opts.match(/b/) ) { thisMsg = '*' + thisMsg + '*' };
-						if ( opts.match(/i/) ) { thisMsg = '_' + thisMsg + '_' };
-						bot.say( { channel: msg.channel, text: thisMsg } );
+	thisConf.SEND_MSG_FN    = function( txt, fn ) {
+						fn = fn || function() { return true };
+						bot.say( { channel: msg.channel, text: '```' + txt + '```' }, function(error,response) {
+							fn( bot, response );
+						});
 				   };
-	thisConf.GET_PLAYER_NAME = function( id, fn ) {
+
+	thisConf.SEND_ALERT_FN   = function( txt, fn ) {
+						fn = fn || function() { return true };
+						bot.say( { channel: msg.channel, text: '`' + txt + '`' }, function(error,response) {
+							fn( bot, response );
+						});
+				   };
+
+	thisConf.LOOKUP_PLAYER_NAME = function( id, fn ) {
 						bot.api.users.info({user: id}, function(error, userResponse) {
 							fn( id, userResponse.user.name );
 						})
 				   };
 	thisConf.GAME_BEGIN_FN  = function( me ) {
 						if ( ! me ) { return };
-						bot.api.channels.setTopic({ channel: msg.channel, topic: me.getLetterBoard() } , function(error, topicResponse) {
+						bot.api.channels.setTopic({ channel: msg.channel, topic: '*' + me.letterBoard.getText() + '*' } , function(error, topicResponse) {
 							if ( error ) { console.log( 'GAME_BEGIN_FN setTopic', error ); return }
 						});
 				   }
-	thisConf.GAME_OVER_FN   = function( me ) {
-						if ( ! me ) { return };
-						bot.api.channels.setTopic({ channel: msg.channel, topic: 'GAME OVER' } , function(error, topicResponse) {
-							if ( error ) { console.log( 'GAME_OVER_FN setTopic', error ); return }
-						});
-				   }
-
 
 	theseGames[msg.channel] = new Game(thisConf);
 }
@@ -100,8 +99,7 @@ var init = function() {
 		if ( ! theseGames[thisChannel] ) { createGame( bot, msg ); }
 
 		var thisChannel = msg.channel;
- 		if ( theseGames[thisChannel].GAME_OVER ) {
-			theseGames[thisChannel].startGame();
+ 		if ( theseGames[thisChannel].STATE == 'GAME OVER' ) {
 			theseGames[thisChannel].runGame();
 		} else {
 			/* this should be a leaky bucket, no spamming */
@@ -145,10 +143,9 @@ var init = function() {
 	slack.hears('^letters?(\\s*board)?', 'direct_mention', function( bot, msg ) {
 		var thisChannel = msg.channel;
 		if ( ! theseGames[thisChannel] ) {
-			createGame( bot, msg );
-			theseGames[thisChannel].startGame();
+			bot.say( { channel: thisChannel, text: "Letters? Start a game first.." } );
 		} else {
-			theseGames[thisChannel].showLetterBoard();
+			theseGames[thisChannel].letterBoard.getText();
 		}
 	})
 
@@ -157,19 +154,52 @@ var init = function() {
 		'bad match':  'capital_abcd',
 		'shorty':     'fried_shrimp',
 		'not a word': 'x',
-		'word up':    'thumbsup'
+		'word up':    'thumbsup',
+
+		'+':          'heavy_plus_sign',
+                '-':          'heavy_minus_sign',
+                '0':          'zero',
+                '1':          'one',
+                '2':          'two',
+                '3':          'three',
+                '4':          'four',
+                '5':          'five',
+                '6':          'six',
+                '7':          'seven',
+                '8':          'eight',
+                '9':          'nine',
+                '.':          'black_circle_for_record'
+
 	};
-	slack.hears('.*', 'ambient', function( bot, msg ) {
+	slack.hears('^\\w', 'ambient', function( bot, msg ) {
 		var thisChannel = msg.channel,
 		    thisGame    = theseGames[thisChannel];
-		if ( ! thisGame )         { return }
-		if ( thisGame.GAME_OVER ) { return }
+		if ( ! thisGame )                      { return }
+		if ( thisGame.STATE != 'IN PROGRESS' ) { return }
 
 		var ret = thisGame.submitWord( msg.text, msg.user );
-		thisGame.showLetterBoard();
+		thisGame.SEND_ALERT_FN( thisGame.letterBoard.getText() );
 
 		if ( ret && ret.reason ) {
+
+			var thisPoints  = '' + ret.points,
+			    thesePoints = thisPoints.split('');
+
+			if ( thesePoints[0] == '-' ) { thesePoints.shift() }
+
 			bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: resultToEmoji[ ret.reason ] }, function(error,response) {
+
+				var thisFn = function() {
+					if ( ! thesePoints || ! thesePoints.length ) { return };
+
+				       var thisChar = thesePoints.shift(),
+					    thisEmoji = resultToEmoji[ thisChar ];
+					bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: thisEmoji }, function(error,response) {
+						thisFn();
+					})
+				}
+				thisFn();
+
 				// console.log( 'reaction', msg, error, response );
 			})
 		}
