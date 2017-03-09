@@ -41,16 +41,26 @@ var Game = require('./lib/Game.js');
 var theseGames = {};
 var createGame = function( bot, msg ) {
 	var thisConf            = JSON.parse(JSON.stringify(config));
-	thisConf.SEND_MSG_FN    = function( txt, fn ) {
-						fn = fn || function() { return true };
-						bot.say( { channel: msg.channel, text: '```' + txt + '```' }, function(error,response) {
-							fn( bot, response );
-						});
-				   };
+	thisConf.SEND_MSG_FN    = function( txt, level, fn ) {
 
-	thisConf.SEND_ALERT_FN   = function( txt, fn ) {
-						fn = fn || function() { return true };
-						bot.say( { channel: msg.channel, text: '`' + txt + '`' }, function(error,response) {
+						level = level || 'message';
+						fn    = fn    || function() { return true };
+
+						if ( typeof level == 'function' ) {
+							fn    = level;
+							level = 'message';
+						}
+
+						var decorators = {
+							'message':   ['```','```'],
+							'highlight': ['`','`'],
+							'alert':     ['<!channel> *','*']
+						}
+						if ( ! decorators[level] ) { level = 'message' };
+						var pre = decorators[level][0],
+						    app = decorators[level][1];
+
+						bot.say( { channel: msg.channel, text: pre + txt + app }, function(error,response) {
 							fn( bot, response );
 						});
 				   };
@@ -60,11 +70,13 @@ var createGame = function( bot, msg ) {
 							fn( id, userResponse.user.name );
 						})
 				   };
-	thisConf.GAME_BEGIN_FN  = function( me ) {
+	thisConf.GAME_BEGIN_FN  = function( me, fn ) {
 						if ( ! me ) { return };
 						bot.api.channels.setTopic({ channel: msg.channel, topic: '*' + me.letterBoard.getText() + '*' } , function(error, topicResponse) {
 							if ( error ) { console.log( 'GAME_BEGIN_FN setTopic', error ); return }
 						});
+
+						if ( fn ) { fn() };
 				   }
 
 	theseGames[msg.channel] = new Game(thisConf);
@@ -178,7 +190,7 @@ var init = function() {
 		if ( thisGame.STATE != 'IN PROGRESS' ) { return }
 
 		var ret = thisGame.submitWord( msg.text, msg.user );
-		thisGame.SEND_ALERT_FN( thisGame.letterBoard.getText() );
+		thisGame.SEND_MSG_FN( thisGame.letterBoard.getText(), 'highlight' );
 
 		if ( ret && ret.reason ) {
 
