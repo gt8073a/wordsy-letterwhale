@@ -27,7 +27,8 @@ var loadDictionary = function(file,fn) {
 		if (err) { return console.log(err); }
 
 		data.split(/\n+/).forEach(function(d) {
-			config.DICTIONARY[d] = true;
+			var wordVal = d.split(/\t/);
+			config.DICTIONARY[wordVal[0]] = wordVal[1] | true;
 		});
 
 	});
@@ -87,7 +88,9 @@ var init = function() {
 	slack.hears('^help', 'direct_mention', function( bot, msg ) {
 
 		var helpMsg  = myName + " is a word game. I'll show you letters, you make words.\n"
-		                      + "  You get " + ( config.TIME_OF_GAME || 45 ) + " seconds.\n"
+		                      + "  You get " + ( config.TIME_OF_GAME || 60 ) + " seconds.\n"
+
+						if ( fn ) { fn() };
 		                      + "  Good Words earn you points.\n"
 		                      + "  Bad Words earn you negative points.\n"
 		                      + "  Dupes earn you a lot of negative points.\n",
@@ -211,8 +214,6 @@ var init = function() {
 					})
 				}
 				thisFn();
-
-				// console.log( 'reaction', msg, error, response );
 			})
 		}
 
