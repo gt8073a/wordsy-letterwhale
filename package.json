@@ -1,5 +1,6 @@
 {
-  "name": "Wordsy Letterwhale",
+  "name": "wordsy_letterwhale",
+  "descripton": "wordsy is a word game. I'll show you letters, you make words.",
   "version": "v0.0.1",
   "private": false,
   "dependencies": {
