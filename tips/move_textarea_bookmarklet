@@ -1,0 +1,22 @@
+What is a bookmarklet?
+
+	http://bookmarklets.org/what-is-a-bookmarklet/
+	Bookmarklets are tiny programs stored inside bookmarks. 
+
+What is the code?
+
+	javascript:var form = $('#msg_form'), head = $('#client_header'), foot = $('#footer_msgs'); if ( (head.find( form )).length ) { foot.prepend( form.detach() ) } else { head.append( form.detach() ) }
+
+What should I call the bookmarklet?
+
+	Call it CHEATER. I always love clicking super zekrit cheater buttons. They're the best!
+
+What does this do?
+
+	Moves the text box form the bottom of the page to the top, right under the chanel topic aka letterboard. If you like to stare at the letters and not see responses a/o othe players's actions, this is nice to do.
+
+Can I undo the move?
+
+	Yup! Click the bookmark again. You can do it a meelion times if you want.
+
+
