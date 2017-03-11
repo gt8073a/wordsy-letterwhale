@@ -1,0 +1,8 @@
+#!/usr/bin/env bash
+
+media=${1:-slack}
+
+cd `dirname $0`/..
+d=`pwd`
+
+node_modules/forever/bin/forever -a -o ${d}/logs/wordsy.log -l ${d}/logs/forever.log -e ${d}/logs/bot.err start ${d}/bin/${media}

@@ -5,6 +5,7 @@
   "private": false,
   "dependencies": {
     "botkit": "^0.5.1",
+    "forever": "^0.15.3",
     "yaml-configuration-loader": "^1.0.2"
   }
 }

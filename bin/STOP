@@ -1,0 +1,26 @@
+#!/usr/bin/env bash
+
+cd `dirname $0`/..
+d=`pwd`
+
+if [ "*$1" == "*" ]; then
+
+  ${d}/bin/LIST
+
+  echo
+  echo You can use the instance, ie [0] or [1], to STOP.
+  echo    see http://www.npmjs/package/forever for help
+  echo "  " $0 "<INSTANCE>"
+  echo
+
+else
+
+  node_modules/forever/bin/forever stop $1
+
+  ${d}/bin/LIST
+
+  echo
+  echo Done.
+  echo
+
+fi
