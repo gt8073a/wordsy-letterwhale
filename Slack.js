@@ -89,8 +89,6 @@ var init = function() {
 
 		var helpMsg  = myName + " is a word game. I'll show you letters, you make words.\n"
 		                      + "  You get " + ( config.TIME_OF_GAME || 60 ) + " seconds.\n"
-
-						if ( fn ) { fn() };
 		                      + "  Good Words earn you points.\n"
 		                      + "  Bad Words earn you negative points.\n"
 		                      + "  Dupes earn you a lot of negative points.\n",
