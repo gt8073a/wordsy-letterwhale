@@ -26,7 +26,7 @@ var loadDictionary = function( game ) {
 	game = game || {};
 	if ( ! game.file ) { return }
 	var thisFile = game.file;
-	if ( thisFile.match(/\//) ) {
+	if ( ! thisFile.match(/^\//) ) {
 		thisFile = __dirname + '/' + thisFile;
 	}
 	fs.readFile( thisFile, 'utf8', function (err,data) {
@@ -224,9 +224,7 @@ var init = function() {
 			if ( config.EMOJISET == 'mapsmarker' ) {
 
 				var prefix    = ret.points < 0 ? 'negative' : 'positive',
-				    thisEmoji = prefix + '_number_' + ret.points;
-
-console.log( ret.points, thisEmoji );
+				    thisEmoji = prefix + '_number_' + Math.abs(ret.points);
 				thisFn = function() {bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: thisEmoji }) };
 
 			} else {
