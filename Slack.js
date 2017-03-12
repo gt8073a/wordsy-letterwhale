@@ -25,7 +25,7 @@ var loadDictionary = function( game ) {
 	game = game || {};
 	if ( ! game.file ) { return }
 	var thisFile = game.file;
-	if ( thisFile.match(/\//) {
+	if ( thisFile.match(/\//) ) {
 		thisFile = __dirname + '/' + thisFile;
 	}
 	fs.readFile( thisFile, 'utf8', function (err,data) {
