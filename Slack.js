@@ -220,30 +220,38 @@ var init = function() {
 
 		if ( ret && ret.reason ) {
 
+			var thisFn;
 			if ( config.EMOJISET == 'mapsmarker' ) {
+
 				var prefix    = ret.points < 0 ? 'negative' : 'positive',
 				    thisEmoji = prefix + '_number_' + ret.points;
-				bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: thisEmoji })
+
+console.log( ret.points, thisEmoji );
+				thisFn = function() {bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: thisEmoji }) };
+
 			} else {
+
 				var thisPoints  = '' + ret.points,
 				    thesePoints = thisPoints.split('');
 
 				if ( thesePoints[0] == '-' ) { thesePoints.shift() }
 
-				bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: resultToEmoji[ ret.reason ] }, function(error,response) {
+				thisFn = function() {
+					if ( ! thesePoints || ! thesePoints.length ) { return };
 
-					var thisFn = function() {
-						if ( ! thesePoints || ! thesePoints.length ) { return };
-
-					       var thisChar = thesePoints.shift(),
-						    thisEmoji = resultToEmoji[ thisChar ];
-						bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: thisEmoji }, function(error,response) {
-							thisFn();
-						})
-					}
-					thisFn();
-				})
+				       var thisChar = thesePoints.shift(),
+					    thisEmoji = resultToEmoji[ thisChar ];
+					bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: thisEmoji }, function(error,response) {
+						thisFn();
+					})
+				}
 			}
+
+			bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: resultToEmoji[ ret.reason ] }, function(error,response) {
+
+				thisFn();
+			})
+
 		}
 
 	});
