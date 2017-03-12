@@ -16,7 +16,6 @@ Note: Wordsy Letterwhale only works in channels. Direct messages won't register,
  * add 3 columns, tsv, for dictionaries: word, true/false, response
  * create kiq version
  * add tip for speech recognition: https://github.com/TalAter/annyang
- * make -50 to +50 emojis ( change out [1] [4] reactions )
  * batch "actions", do alot per transaction ( do we really need that? )
  * format game list
 
