@@ -19,21 +19,25 @@ var Botkit  = require('botkit'),
 
 
 
-config.DICTIONARY = {};
+var DICTIONARY = {};
 var fs = require('fs');
-var loadDictionary = function(file,fn) {
-	fs.readFile( file, 'utf8', function (err,data) {
+var loadDictionary = function( game ) {
+	game = game || {};
+	if ( ! game.file ) { return }
+	fs.readFile( game.file, 'utf8', function (err,data) {
 
 		if (err) { return console.log(err); }
 
+		var thisList = {};
 		data.split(/\n+/).forEach(function(d) {
 			var wordVal = d.split(/\t/);
-			config.DICTIONARY[wordVal[0]] = wordVal[1] | true;
+			if ( ! wordVal[0].match(/\w+/) ) { return };
+			thisList[wordVal[0].toLowerCase()] = wordVal[1] | true;
 		});
+		DICTIONARY[game.name] = thisList;
 
 	});
 
-	fn();
 }
 
 var Game = require('./lib/Game.js');
@@ -94,6 +98,7 @@ var init = function() {
 		                      + "  Dupes earn you a lot of negative points.\n",
 		    helpOpts = "To start a game:\n   @"                 + myName + " start a game\n"
 		              + "To play a word in a game:\n  "                  + " type it in and hit return\n"
+			      + "To see all the games:\n   @"           + myName + " list games\n"
 			      + "To end a game early:\n   @"            + myName + " game over\n"
 		              + "To see time left in a game:\n   @"     + myName + " time left\n"
 			      + "To see the scoreboard:\n   @"          + myName + " score\n"
@@ -111,8 +116,13 @@ var init = function() {
 
 		if ( ! theseGames[thisChannel] ) { createGame( bot, msg ); }
 
+		var matches  = msg.text.match(/(\w+)$/),
+		    gameName = matches[1] || 'default',
+		    thisDict = DICTIONARY[gameName] || DICTIONARY['default'];
+
 		var thisChannel = msg.channel;
  		if ( theseGames[thisChannel].STATE == 'GAME OVER' ) {
+			theseGames[thisChannel].playerLog.words.setDictionary(thisDict);
 			theseGames[thisChannel].runGame();
 		} else {
 			/* this should be a leaky bucket, no spamming */
@@ -161,6 +171,16 @@ var init = function() {
 			theseGames[thisChannel].letterBoard.getText();
 		}
 	})
+
+	slack.hears('^list(\\s+(games?|dictionar(y|ies)))?', 'direct_mention', function( bot, msg ) {
+		if ( ! config.games.length ) { return }
+		var txt = '';
+		config.games.forEach(function(g) {
+			txt = txt + g.display + ': ' + g.short + "\n"
+		})
+		bot.say( { channel: msg.channel, text: txt } );
+	})
+
 
 	var resultToEmoji = {
 		'duplicate':  'busts_in_silhouette',
@@ -221,5 +241,6 @@ var init = function() {
 
 }
 
-
-loadDictionary( config.dictionary, init );
+var theseGames = config.games || [];
+theseGames.forEach(function(g) { loadDictionary(g) });
+init();
