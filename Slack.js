@@ -3,7 +3,8 @@
 var Config = require('yaml-configuration-loader'),
     config = Config.load( process.env.CONFIG || ( __dirname + '/config/default.yaml' ) );
 
-    config.NAME = config.NAME || 'wordsy';
+    config.NAME     = config.NAME || 'wordsy';
+    config.EMOJISET = config.EMOJISET || 'default';
 
 var myName = config.NAME,
     debug  = process.env.DEBUG || false;
@@ -219,24 +220,30 @@ var init = function() {
 
 		if ( ret && ret.reason ) {
 
-			var thisPoints  = '' + ret.points,
-			    thesePoints = thisPoints.split('');
+			if ( config.EMOJISET == 'mapsmarker' ) {
+				var prefix    = ret.points < 0 ? 'negative' : 'positive',
+				    thisEmoji = prefix + '_number_' + ret.points;
+				bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: thisEmoji })
+			} else {
+				var thisPoints  = '' + ret.points,
+				    thesePoints = thisPoints.split('');
 
-			if ( thesePoints[0] == '-' ) { thesePoints.shift() }
+				if ( thesePoints[0] == '-' ) { thesePoints.shift() }
 
-			bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: resultToEmoji[ ret.reason ] }, function(error,response) {
+				bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: resultToEmoji[ ret.reason ] }, function(error,response) {
 
-				var thisFn = function() {
-					if ( ! thesePoints || ! thesePoints.length ) { return };
+					var thisFn = function() {
+						if ( ! thesePoints || ! thesePoints.length ) { return };
 
-				       var thisChar = thesePoints.shift(),
-					    thisEmoji = resultToEmoji[ thisChar ];
-					bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: thisEmoji }, function(error,response) {
-						thisFn();
-					})
-				}
-				thisFn();
-			})
+					       var thisChar = thesePoints.shift(),
+						    thisEmoji = resultToEmoji[ thisChar ];
+						bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: thisEmoji }, function(error,response) {
+							thisFn();
+						})
+					}
+					thisFn();
+				})
+			}
 		}
 
 	});

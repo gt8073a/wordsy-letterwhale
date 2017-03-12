@@ -11,7 +11,7 @@ Note: Wordsy Letterwhale only works in channels. Direct messages won't register,
 
 ## TODO
  * complete game.js / slack.js split, or just merge them. whatever, just do something because it sucks now
- * add multiple games / dictionaries
+ * add more games ( requires 1000s of words. dogs is too small, maybe animals would work )
  * add game headers and footers ( this game was brought to you by the letter c )
  * add 3 columns, tsv, for dictionaries: word, true/false, response
  * create kiq version
