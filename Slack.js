@@ -24,7 +24,11 @@ var fs = require('fs');
 var loadDictionary = function( game ) {
 	game = game || {};
 	if ( ! game.file ) { return }
-	fs.readFile( game.file, 'utf8', function (err,data) {
+	var thisFile = game.file;
+	if ( thisFile.match(/\//) {
+		thisFile = __dirname + '/' + thisFile;
+	}
+	fs.readFile( thisFile, 'utf8', function (err,data) {
 
 		if (err) { return console.log(err); }
 
