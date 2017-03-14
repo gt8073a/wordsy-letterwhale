@@ -50,8 +50,25 @@ var Game = require('./lib/Game.js');
 /* channel => new game.js */
 var theseGames = {};
 var createGame = function( bot, msg ) {
-	var thisConf            = JSON.parse(JSON.stringify(config));
-	thisConf.SEND_MSG_FN    = function( txt, level, fn ) {
+	var thisConf       = JSON.parse(JSON.stringify(config));
+
+	thisConf.messaging = {};
+	var decorators = {
+		'message':   ['```','```'],
+		'highlight': ['`','`'],
+		'alert':     ['<!channel> *','*'],
+		'bold':      ['*','*'],
+		'plain':     ['','']
+	}
+	thisConf.messaging.FORMAT_MSG_FN  = function( txt, level ) {
+						level = level || 'message';
+						if ( ! decorators[level] ) { level = 'message' };
+						var pre = decorators[level][0],
+						    app = decorators[level][1],
+						    ret = pre + txt + app;
+						return ret;
+	};
+	thisConf.messaging.SEND_MSG_FN    = function( txt, level, fn ) {
 
 						level = level || 'message';
 						fn    = fn    || function() { return true };
@@ -61,33 +78,53 @@ var createGame = function( bot, msg ) {
 							level = 'message';
 						}
 
-						var decorators = {
-							'message':   ['```','```'],
-							'highlight': ['`','`'],
-							'alert':     ['<!channel> *','*']
-						}
-						if ( ! decorators[level] ) { level = 'message' };
-						var pre = decorators[level][0],
-						    app = decorators[level][1];
-
-						bot.say( { channel: msg.channel, text: pre + txt + app }, function(error,response) {
+						var thisMsg = thisConf.messaging.FORMAT_MSG_FN( txt, level );
+						bot.say( { channel: msg.channel, text: thisMsg }, function(error,response) {
+							if ( error ) { console.log( 'thisConf.messaging.SEND_MSG_FN', error ) };
 							fn( bot, response );
 						});
 				   };
 
-	thisConf.LOOKUP_PLAYER_NAME = function( id, fn ) {
+	thisConf.messaging.UPDATE_MSG_FN = function( bot, response, txt, level, fn  ) {
+						level = level || 'message';
+						fn    = fn    || function() { return true };
+
+						if ( typeof level == 'function' ) {
+							fn    = level;
+							level = 'message';
+						}
+
+						var thisMsg = thisConf.messaging.FORMAT_MSG_FN( txt, level );
+						bot.api.chat.update({ ts: response.ts, channel: response.channel, text: thisMsg }, function( error, resp ) {
+							if ( error ) { console.log( 'thisConf.messaging.UPDATE_MSG_FN', error ) };
+							fn( bot, resp );
+						})
+	}
+
+	thisConf.messaging.SET_TOPIC_FN    = function( txt, level, fn ) {
+						level = level || 'message';
+						fn    = fn    || function() { return true };
+
+						if ( typeof level == 'function' ) {
+							fn    = level;
+							level = 'message';
+						}
+
+						var thisMsg = thisConf.messaging.FORMAT_MSG_FN( txt, level );
+						if ( level != 'bold' ) { thisMsg = thisConf.messaging.FORMAT_MSG_FN( thisMsg, 'bold' ) }
+						bot.api.channels.setTopic({ channel: msg.channel, topic: thisMsg } , function(error, resp) {
+							if ( error ) { console.log( 'thisConf.messaging.SET_TOPIC_FN', error ) };
+							fn( bot, resp );
+						})
+	}
+
+	thisConf.services = {};
+	thisConf.services.LOOKUP_PLAYER_NAME = function( id, fn ) {
 						bot.api.users.info({user: id}, function(error, userResponse) {
+							if ( error ) { console.log( 'thisConf.messaging.LOOKUP_PLAYER_NAME', error ) };
 							fn( id, userResponse.user.name );
 						})
 				   };
-	thisConf.GAME_BEGIN_FN  = function( me, fn ) {
-						if ( ! me ) { return };
-						bot.api.channels.setTopic({ channel: msg.channel, topic: '*' + me.letterBoard.getText() + '*' } , function(error, topicResponse) {
-							if ( error ) { console.log( 'GAME_BEGIN_FN setTopic', error ); return }
-						});
-
-						if ( fn ) { fn() };
-				   }
 
 	theseGames[msg.channel] = new Game(thisConf);
 }
@@ -121,14 +158,15 @@ var init = function() {
 
 		if ( ! theseGames[thisChannel] ) { createGame( bot, msg ); }
 
-		var matches  = msg.text.match(/(\w+)$/),
-		    gameName = matches[1] || 'default',
-		    thisDict = DICTIONARY[gameName] || DICTIONARY['default'];
+		var matches    = msg.text.match(/(\w+)$/),
+		    gameName   = matches[1]           || 'default',
+		    thisConfig = config[gameName]     || config,
+		    thisDict   = DICTIONARY[gameName] || DICTIONARY['default'];
 
 		var thisChannel = msg.channel;
  		if ( theseGames[thisChannel].STATE == 'GAME OVER' ) {
 			theseGames[thisChannel].playerLog.words.setDictionary(thisDict);
-			theseGames[thisChannel].runGame();
+			theseGames[thisChannel].runGame(thisConfig);
 		} else {
 			/* this should be a leaky bucket, no spamming */
 			bot.say( { channel: thisChannel, text: 'Game in progress. Try * @' + myName + ' stop game *' } );
@@ -151,9 +189,10 @@ var init = function() {
 	slack.hears('^time(\\s+left)?', 'direct_mention', function( bot, msg ) {
 		var thisChannel = msg.channel;
 		if ( ! theseGames[thisChannel] ) {
-			bot.say( { channel: thisChannel, text: "There's no game, there's no time." } );
+			bot.say( { channel: msg.channel, text: "There's no game, there's no time." } );
 		} else {
-			theseGames[thisChannel].timeLeft();
+			var time = theseGames[thisChannel].getTimeLeft();
+			theseGames[thisChannel].messaging.SEND_MSG_FN( time, 'plain' );
 		}
 	})
 
@@ -161,19 +200,9 @@ var init = function() {
 	slack.hears('^(game\\s+)?score', 'direct_mention', function( bot, msg ) {
 		var thisChannel = msg.channel;
 		if ( ! theseGames[thisChannel] ) {
-			bot.say( { channel: thisChannel, text: "What score? There's no game.." } );
+			bot.say( { channel: msg.channel, text: "There's no game, there's no score. Sheesh.." } );
 		} else {
 			theseGames[thisChannel].scoreBoard();
-		}
-	})
-
-	/* letters */
-	slack.hears('^letters?(\\s*board)?', 'direct_mention', function( bot, msg ) {
-		var thisChannel = msg.channel;
-		if ( ! theseGames[thisChannel] ) {
-			bot.say( { channel: thisChannel, text: "Letters? Start a game first.." } );
-		} else {
-			theseGames[thisChannel].letterBoard.getText();
 		}
 	})
 
@@ -216,7 +245,7 @@ var init = function() {
 		if ( thisGame.STATE != 'IN PROGRESS' ) { return }
 
 		var ret = thisGame.submitWord( msg.text, msg.user );
-		thisGame.SEND_MSG_FN( thisGame.letterBoard.getText(), 'highlight' );
+		thisGame.messaging.SEND_MSG_FN( thisGame.letterBoard.getText(), 'highlight' );
 
 		if ( ret && ret.reason ) {
 

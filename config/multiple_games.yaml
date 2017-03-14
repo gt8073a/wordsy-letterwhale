@@ -1,0 +1,18 @@
+BOTKIT_TOKEN: <change me, see https://my.slack.com/services/new/bot>
+BOTKIT_URL: <change me, see https://my.slack.com/services/new/incoming-webhook/>
+games:
+ - name: default
+   short: The default game.
+   file: /usr/share/dict/web2
+   vowels: aaaaaaaeeeeeeeeeeeeeiiiiiiioooooooouuu
+   consonants: bbcccddddffgghhhhhhjkllllmmmnnnnnnnppqrrrrrrsssssstttttttttvwwxyyz
+ - name: spanish
+   short: Use a Spanish dictionary.
+   file: <change me, find a list of Spanish words online, and download>
+   vowels: aaaaaaaaaaaaeeeeeeeeeeeeeeiiiiioooooooouuuuuáéíóúü
+   consonants: bbccccdddddfghjklllllmmmnnnnnnnpppqrrrrrrrssssssstttttvwxyzñ
+ - name: french
+   short: Use a French dictionary.
+   file: <change me, find a list of French words online, and download>
+   letters: aaaaaaaaàâæbcccçddddeeeeeeeeeeeeeeeéèêëfghiiiiiiiîïjkllllllmmmnnnnnnnoooooôœpppqrrrrrrrsssssssstttttttuuuuuuùûvwxyÿz
+

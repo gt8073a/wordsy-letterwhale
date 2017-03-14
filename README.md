@@ -15,8 +15,8 @@ Note: Wordsy Letterwhale only works in channels. Direct messages won't register,
  * add game headers and footers ( this game was brought to you by the letter c )
  * add 3 columns, tsv, for dictionaries: word, true/false, response
  * create kiq version
- * add tip for speech recognition: https://github.com/TalAter/annyang
  * batch "actions", do alot per transaction ( do we really need that? )
  * format game list
+ * fix slack score format on phone. needs utf8 nonbreaking space
 
 
