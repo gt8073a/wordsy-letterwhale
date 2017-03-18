@@ -29,6 +29,7 @@ var loadDictionary = function( game ) {
 	if ( ! thisFile.match(/^\//) ) {
 		thisFile = __dirname + '/' + thisFile;
 	}
+
 	fs.readFile( thisFile, 'utf8', function (err,data) {
 
 		if (err) { return console.log(err); }
@@ -133,18 +134,27 @@ var init = function() {
 
 	slack.hears('^help', 'direct_mention', function( bot, msg ) {
 
-		var helpMsg  = myName + " is a word game. I'll show you letters, you make words.\n"
-		                      + "  You get " + ( config.TIME_OF_GAME || 60 ) + " seconds.\n"
-		                      + "  Good Words earn you points.\n"
-		                      + "  Bad Words earn you negative points.\n"
-		                      + "  Dupes earn you a lot of negative points.\n",
-		    helpOpts = "To start a game:\n   @"                 + myName + " start a game\n"
-		              + "To play a word in a game:\n  "                  + " type it in and hit return\n"
-			      + "To see all the games:\n   @"           + myName + " list games\n"
-			      + "To end a game early:\n   @"            + myName + " game over\n"
-		              + "To see time left in a game:\n   @"     + myName + " time left\n"
-			      + "To see the scoreboard:\n   @"          + myName + " score\n"
-			      + "To see the letters in a game:\n   @"   + myName + " letters\n";
+		var helpMsg, helpOpts;
+		if ( msg.text.match(/game/) ) {
+			helpMsg  = "To start a game:\n   @" + myName + " go\n",
+			helpOpts = + "To set the smallest size a word can be to get points:\n   smallest word 123\n"
+					+ "To set the number of letters, defaults to 17:\n   letters 123\n"
+					+ "To set the time of the game, defaults to 60 sec:\n   timer 123\n"
+					+ "Example:\n      @" + myName + " smallest word 5 timer 30 go\n"
+		} else {
+			helpMsg  = myName + " is a word game. I'll show you letters, you make words.\n"
+					      + "  You get " + ( config.TIME_OF_GAME || 60 ) + " seconds.\n"
+					      + "  Good Words earn you points.\n"
+					      + "  Bad Words earn you negative points.\n"
+					      + "  Dupes earn you a lot of negative points.\n",
+			helpOpts = "To start a game ( see help game for more ):\n   @"                 + myName + " go\n"
+				      + "To play a word in a game:\n  "                  + " type it in and hit return\n"
+				      + "To see all the games:\n   @"           + myName + " list games\n"
+				      + "To end a game early:\n   @"            + myName + " game over\n"
+				      + "To see time left in a game:\n   @"     + myName + " time left\n"
+				      + "To see the scoreboard:\n   @"          + myName + " score\n"
+				      + "To see the letters in a game:\n   @"   + myName + " letters\n";
+		}
 
 		helpOpts.replace( / /, 0xC2, 'g' );
 
@@ -154,14 +164,24 @@ var init = function() {
 	})
 
 	/* create */
-	slack.hears('^(go|(start|begin)((\\s+a)?\\s+game)?)', 'direct_mention', function( bot, msg ) {
+	slack.hears('(^|\\s+)(go|start|begin)$', 'direct_mention', function( bot, msg ) {
 
 		if ( ! theseGames[thisChannel] ) { createGame( bot, msg ); }
 
-		var matches    = msg.text.match(/(\w+)$/),
-		    gameName   = matches[1]           || 'default',
-		    thisConfig = config[gameName]     || config,
+		var matches    = msg.text.match(/(the\s+)?game(\s+is\s+|\s*=\s*|\s+)?(\w+)/),
+		    gameName   = matches ? matches[ matches.length - 1] : 'default',
+		    thisConfig = JSON.parse(JSON.stringify( config[gameName] || config )),
 		    thisDict   = DICTIONARY[gameName] || DICTIONARY['default'];
+
+		var tMatches = msg.text.match(/(the\s+)?timer?(\s+is\s+|\s*=\s*|\s+)?(\d+)/);
+		thisConfig.time = tMatches ? tMatches[ tMatches.length - 1] : 60;
+
+		var mMatches = msg.text.match(/letters(\s+is\s+|\s*=\s*|\s+)?(\d+)/i);
+		thisConfig.size = mMatches ? mMatches[ mMatches.length - 1] : 17;
+
+		/* needs a setter */
+		var wMatches = msg.text.match(/(small(est)?\s+words?|length|word( length)?)(\s+is\s+|\s*=\s*|\s+)?(\d+)/i);
+		thisConfig.MIN_WORD_LENGTH = wMatches ? wMatches[ wMatches.length - 1] : 2;
 
 		var thisChannel = msg.channel;
  		if ( theseGames[thisChannel].STATE == 'GAME OVER' ) {
