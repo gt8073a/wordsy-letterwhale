@@ -192,6 +192,7 @@ var init = function() {
 		    gameName   = matches ? matches[ matches.length - 1] : 'default',
 		    thisConfig = JSON.parse(JSON.stringify( config[gameName] || config )),
 		    thisDict   = DICTIONARY[gameName] || DICTIONARY['default'];
+		thisConfig.gameName = gameName;
 
 		var tMatches = msg.text.match(/(the\s+)?timer?(\s+is\s+|\s*=\s*|\s+)?(\d+)/);
 		thisConfig.time = tMatches ? tMatches[ tMatches.length - 1] : 60;
@@ -287,13 +288,15 @@ var init = function() {
 
 		var ret = thisGame.submitWord( msg.text, msg.user );
 
-		var reps = [
-			{ text: thisGame.letterBoard.getText(), level: 'highlight|bold' },
-			{ text: ' - ', level: 'plain' },
-			{ text: thisGame.getTimeLeft(0), level: 'italics' },
-			{ text: ' | ', level: 'plain' },
-			{ text: thisGame.playerLog.words.MIN_WORD_LENGTH + '+ letter words', level: 'italics' }
-		];
+                var reps = [
+                        { text: thisGame.letterBoard.getText(), level: 'highlight|bold' },
+                        { text: '   - ', level: 'plain' },
+                        { text: thisGame.getTimeLeft(0, 'short'), level: 'italics' },
+                        { text: ' | ', level: 'plain' },
+                        { text: thisGame.playerLog.words.MIN_WORD_LENGTH + '+ letters', level: 'italics' },
+                        { text: ' | ', level: 'plain' },
+                        { text: thisGame.gameName + ' game', level: 'italics' }
+                ];
 		thisGame.messaging.SEND_MSG_FN( reps, 'highlight' );
 
 		if ( ret && ret.reason ) {
