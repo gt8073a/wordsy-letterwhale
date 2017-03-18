@@ -49,73 +49,91 @@ var loadDictionary = function( game ) {
 var Game = require('./lib/Game.js');
 
 /* channel => new game.js */
-var theseGames = {};
+var theseGames = {},
+    decorators = {
+	'message':   ['```','```'],
+	'highlight': ['`','`'],
+	'alert':     ['<!channel> *','*'],
+	'bold':      ['*','*'],
+	'italics':   ['_','_'],
+	'plain':     ['','']
+   }
 var createGame = function( bot, msg ) {
 	var thisConf       = JSON.parse(JSON.stringify(config));
 
 	thisConf.messaging = {};
-	var decorators = {
-		'message':   ['```','```'],
-		'highlight': ['`','`'],
-		'alert':     ['<!channel> *','*'],
-		'bold':      ['*','*'],
-		'plain':     ['','']
-	}
-	thisConf.messaging.FORMAT_MSG_FN  = function( txt, level ) {
-						level = level || 'message';
-						if ( ! decorators[level] ) { level = 'message' };
-						var pre = decorators[level][0],
-						    app = decorators[level][1],
-						    ret = pre + txt + app;
-						return ret;
-	};
-	thisConf.messaging.SEND_MSG_FN    = function( txt, level, fn ) {
 
+	thisConf.messaging._prepper = function( txt, level, fn ) {
+						var thisMsg;
 						level = level || 'message';
 						fn    = fn    || function() { return true };
+						if ( typeof txt == 'string' ) {
+							if ( typeof level == 'function' ) {
+								fn    = level;
+								level = 'message';
+							}
+							thisMsg = thisConf.messaging.FORMAT_MSG_FN( txt, level );
+						} else if ( txt instanceof Array ) {
+							thisMsg = thisConf.messaging.MULTI_FORMAT_FN( txt, level );
+							level = 'plain'
+						}
+						return { text: thisMsg, level: level, fn: fn };
+	}
 
-						if ( typeof level == 'function' ) {
-							fn    = level;
-							level = 'message';
+	thisConf.messaging.FORMAT_MSG_FN  = function( txt, level ) {
+
+						level = level || 'message';
+						if ( typeof level == 'string' ) {
+							level = level.split('|')
 						}
 
-						var thisMsg = thisConf.messaging.FORMAT_MSG_FN( txt, level );
-						bot.say( { channel: msg.channel, text: thisMsg }, function(error,response) {
+						var ret = txt;
+						level.forEach(function(l) {
+							if ( ! decorators[l] ) {
+								l = 'message'
+							};
+							var pre = decorators[l][0],
+							    app = decorators[l][1];
+							ret = pre + ret + app;
+						})
+
+						return ret;
+	};
+
+	thisConf.messaging.MULTI_FORMAT_FN = function( msgs, level ) {
+						msgs  = msgs  || [];
+						level = level || 'plain';
+						var str = '';
+						msgs.forEach(function(msg) {
+							var txt = msg.text,
+							    lvl = msg.level || level,
+							    fmt = thisConf.messaging.FORMAT_MSG_FN( txt, lvl );
+							str = str + fmt
+						})
+						return str;
+	}
+
+	thisConf.messaging.SEND_MSG_FN    = function( txt, level, fn ) {
+						var obj = thisConf.messaging._prepper( txt, level, fn );
+						bot.say( { channel: msg.channel, text: obj.text }, function(error,response) {
 							if ( error ) { console.log( 'thisConf.messaging.SEND_MSG_FN', error ) };
-							fn( bot, response );
+							obj.fn( bot, response );
 						});
 				   };
 
 	thisConf.messaging.UPDATE_MSG_FN = function( bot, response, txt, level, fn  ) {
-						level = level || 'message';
-						fn    = fn    || function() { return true };
-
-						if ( typeof level == 'function' ) {
-							fn    = level;
-							level = 'message';
-						}
-
-						var thisMsg = thisConf.messaging.FORMAT_MSG_FN( txt, level );
-						bot.api.chat.update({ ts: response.ts, channel: response.channel, text: thisMsg }, function( error, resp ) {
+						var obj = thisConf.messaging._prepper( txt, level, fn );
+						bot.api.chat.update({ ts: response.ts, channel: response.channel, text: obj.text }, function( error, resp ) {
 							if ( error ) { console.log( 'thisConf.messaging.UPDATE_MSG_FN', error ) };
-							fn( bot, resp );
+							obj.fn( bot, resp );
 						})
 	}
 
 	thisConf.messaging.SET_TOPIC_FN    = function( txt, level, fn ) {
-						level = level || 'message';
-						fn    = fn    || function() { return true };
-
-						if ( typeof level == 'function' ) {
-							fn    = level;
-							level = 'message';
-						}
-
-						var thisMsg = thisConf.messaging.FORMAT_MSG_FN( txt, level );
-						if ( level != 'bold' ) { thisMsg = thisConf.messaging.FORMAT_MSG_FN( thisMsg, 'bold' ) }
-						bot.api.channels.setTopic({ channel: msg.channel, topic: thisMsg } , function(error, resp) {
+						var obj = thisConf.messaging._prepper( txt, level, fn )
+						bot.api.channels.setTopic({ channel: msg.channel, topic: obj.text } , function(error, resp) {
 							if ( error ) { console.log( 'thisConf.messaging.SET_TOPIC_FN', error ) };
-							fn( bot, resp );
+							obj.fn( bot, resp );
 						})
 	}
 
@@ -265,7 +283,15 @@ var init = function() {
 		if ( thisGame.STATE != 'IN PROGRESS' ) { return }
 
 		var ret = thisGame.submitWord( msg.text, msg.user );
-		thisGame.messaging.SEND_MSG_FN( thisGame.letterBoard.getText(), 'highlight' );
+
+		var reps = [
+			{ text: thisGame.letterBoard.getText(), level: 'highlight|bold' },
+			{ text: ' - ', level: 'plain' },
+			{ text: thisGame.getTimeLeft(0), level: 'italics' },
+			{ text: ' | ', level: 'plain' },
+			{ text: thisGame.playerLog.words.MIN_WORD_LENGTH + '+ letter words', level: 'italics' }
+		];
+		thisGame.messaging.SEND_MSG_FN( reps, 'highlight' );
 
 		if ( ret && ret.reason ) {
 
@@ -295,7 +321,6 @@ var init = function() {
 			}
 
 			bot.api.reactions.add({ channel: msg.channel, timestamp: msg.ts, name: resultToEmoji[ ret.reason ] }, function(error,response) {
-
 				thisFn();
 			})
 
