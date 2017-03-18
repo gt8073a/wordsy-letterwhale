@@ -18,8 +18,6 @@ var Botkit  = require('botkit'),
                         }
                 });
 
-
-
 var DICTIONARY = {};
 var fs = require('fs');
 var loadDictionary = function( game ) {
@@ -46,72 +44,76 @@ var loadDictionary = function( game ) {
 
 }
 
-var Game = require('./lib/Game.js');
-
-/* channel => new game.js */
-var theseGames = {},
-    decorators = {
+var decorators = {
 	'message':   ['```','```'],
 	'highlight': ['`','`'],
 	'alert':     ['<!channel> *','*'],
 	'bold':      ['*','*'],
 	'italics':   ['_','_'],
 	'plain':     ['','']
-   }
+ }
+
+var FORMAT_MSG_FN  = function( txt, level ) {
+
+	level = level || 'message';
+	if ( typeof level == 'string' ) {
+		level = level.split('|')
+	}
+
+	var ret = txt;
+	level.forEach(function(l) {
+		if ( ! decorators[l] ) {
+			l = 'message'
+		};
+		var pre = decorators[l][0],
+		    app = decorators[l][1];
+		ret = pre + ret + app;
+	})
+
+	return ret;
+};
+
+var MULTI_FORMAT_FN = function( msgs, level ) {
+	msgs  = msgs  || [];
+	level = level || 'plain';
+	var str = '';
+	msgs.forEach(function(msg) {
+		var txt = msg.text,
+		    lvl = msg.level || level,
+		    fmt = FORMAT_MSG_FN( txt, lvl );
+		str = str + fmt
+	})
+	return str;
+}
+
+var FORMAT_PREPPER = function( txt, level, fn ) {
+	var thisMsg;
+	level = level || 'message';
+	fn    = fn    || function() { return true };
+	if ( typeof txt == 'string' ) {
+		if ( typeof level == 'function' ) {
+			fn    = level;
+			level = 'message';
+		}
+		thisMsg = FORMAT_MSG_FN( txt, level );
+	} else if ( txt instanceof Array ) {
+		thisMsg = MULTI_FORMAT_FN( txt, level );
+		level = 'plain'
+	}
+	return { text: thisMsg, level: level, fn: fn };
+}
+
+var Game = require('./lib/Game.js');
+
+/* channel => new game.js */
+var theseGames = {};
 var createGame = function( bot, msg ) {
 	var thisConf       = JSON.parse(JSON.stringify(config));
 
 	thisConf.messaging = {};
-
-	thisConf.messaging._prepper = function( txt, level, fn ) {
-						var thisMsg;
-						level = level || 'message';
-						fn    = fn    || function() { return true };
-						if ( typeof txt == 'string' ) {
-							if ( typeof level == 'function' ) {
-								fn    = level;
-								level = 'message';
-							}
-							thisMsg = thisConf.messaging.FORMAT_MSG_FN( txt, level );
-						} else if ( txt instanceof Array ) {
-							thisMsg = thisConf.messaging.MULTI_FORMAT_FN( txt, level );
-							level = 'plain'
-						}
-						return { text: thisMsg, level: level, fn: fn };
-	}
-
-	thisConf.messaging.FORMAT_MSG_FN  = function( txt, level ) {
-
-						level = level || 'message';
-						if ( typeof level == 'string' ) {
-							level = level.split('|')
-						}
-
-						var ret = txt;
-						level.forEach(function(l) {
-							if ( ! decorators[l] ) {
-								l = 'message'
-							};
-							var pre = decorators[l][0],
-							    app = decorators[l][1];
-							ret = pre + ret + app;
-						})
-
-						return ret;
-	};
-
-	thisConf.messaging.MULTI_FORMAT_FN = function( msgs, level ) {
-						msgs  = msgs  || [];
-						level = level || 'plain';
-						var str = '';
-						msgs.forEach(function(msg) {
-							var txt = msg.text,
-							    lvl = msg.level || level,
-							    fmt = thisConf.messaging.FORMAT_MSG_FN( txt, lvl );
-							str = str + fmt
-						})
-						return str;
-	}
+	thisConf.messaging._prepper        = FORMAT_PREPPER;
+	thisConf.messaging.FORMAT_MSG_FN   = FORMAT_MSG_FN;
+	thisConf.messaging.MULTI_FORMAT_FN = MULTI_FORMAT_FN;
 
 	thisConf.messaging.SEND_MSG_FN    = function( txt, level, fn ) {
 						var obj = thisConf.messaging._prepper( txt, level, fn );
@@ -167,7 +169,7 @@ var init = function() {
 					      + "  Dupes earn you a lot of negative points.\n",
 			helpOpts = "To start a game ( see help game for more ):\n   @"                 + myName + " go\n"
 				      + "To play a word in a game:\n  "                  + " type it in and hit return\n"
-				      + "To see all the games:\n   @"           + myName + " list games\n"
+				      + "To see all the games:\n   @"           + myName + " dictionaries\n"
 				      + "To end a game early:\n   @"            + myName + " game over\n"
 				      + "To see time left in a game:\n   @"     + myName + " time left\n"
 				      + "To see the scoreboard:\n   @"          + myName + " score\n"
@@ -244,12 +246,13 @@ var init = function() {
 		}
 	})
 
-	slack.hears('^list(\\s+(games?|dictionar(y|ies)))?', 'direct_mention', function( bot, msg ) {
+	slack.hears('^(list\\s+)?(games?|dictionar(y|ies))', 'direct_mention', function( bot, msg ) {
 		if ( ! config.games.length ) { return }
 		var txt = '';
 		config.games.forEach(function(g) {
-			txt = txt + g.display + ': ' + g.short + "\n"
+			txt = txt + g.name + ":\n     " + g.short + "\n"
 		})
+		txt = FORMAT_MSG_FN( txt, 'message' );
 		bot.say( { channel: msg.channel, text: txt } );
 	})
 
