@@ -137,7 +137,7 @@ var init = function() {
 		var helpMsg, helpOpts;
 		if ( msg.text.match(/game/) ) {
 			helpMsg  = "To start a game:\n   @" + myName + " go\n",
-			helpOpts = + "To set the smallest size a word can be to get points:\n   smallest word 123\n"
+			helpOpts = "To set the smallest size a word can be to get points:\n   smallest word 123\n"
 					+ "To set the number of letters, defaults to 17:\n   letters 123\n"
 					+ "To set the time of the game, defaults to 60 sec:\n   timer 123\n"
 					+ "Example:\n      @" + myName + " smallest word 5 timer 30 go\n"
