@@ -200,7 +200,7 @@ var init = function() {
 
 		var matches    = msg.text.match(/(the\s+)?game(\s+is\s+|\s*=\s*|\s+)?(\w+)/),
 		    gameName   = matches ? matches[ matches.length - 1] : 'default',
-		    thisConfig = JSON.parse(JSON.stringify( config[gameName] || config )),
+		    thisConfig = JSON.parse(JSON.stringify( config.games[gameName] || config )),
 		    thisDict   = DICTIONARY[gameName] || DICTIONARY['default'];
 		thisConfig.gameName = gameName;
 
