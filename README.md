@@ -14,8 +14,9 @@ Note: Wordsy Letterwhale only works in channels. Direct messages won't register,
  * create kiq version
  * fb messenger version
  * batch "actions", do alot per transaction ( do we really need that? )
- * format game list
  * fix slack score format on phone. needs utf8 nonbreaking space
  * track common words, score them 0 points
  * add file: to config, and load it, stored as if in og file
+ * move dictionary to it's own object
+ * move formatting to Slack/Format.js
 

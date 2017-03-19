@@ -6,6 +6,16 @@ var Config = require('yaml-configuration-loader'),
     config.NAME     = config.NAME || 'wordsy';
     config.EMOJISET = config.EMOJISET || 'default';
 
+/* in yaml, games are an array, switch to a hash */
+if ( config.games instanceof Array ) {
+	var theseConfigGames = {};
+	config.games.forEach(function(g) {
+		if ( ! g.name ) { return };
+		theseConfigGames[g.name] = g
+	})
+	config.games = theseConfigGames
+}
+
 var myName = config.NAME,
     debug  = process.env.DEBUG || false;
 
@@ -338,6 +348,9 @@ var init = function() {
 
 }
 
-var theseGames = config.games || [];
-theseGames.forEach(function(g) { loadDictionary(g) });
+var theseGames = config.games || {};
+for ( var key in config.games ) {
+	var toLoad = config.games[key];
+	loadDictionary(toLoad);
+}
 init();
