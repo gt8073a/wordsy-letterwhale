@@ -13,52 +13,27 @@ var Botkit  = require('botkit'),
                         }
                 });
 
-var DICTIONARY = {};
-var fs = require('fs');
-var loadDictionary = function( game ) {
-	game = game || {};
-	if ( ! game.file ) { return }
-	var thisFile = game.file;
-	if ( ! thisFile.match(/^\//) ) {
-		thisFile = __dirname + '/' + thisFile;
-	}
-
-	fs.readFile( thisFile, 'utf8', function (err,data) {
-
-		if (err) { return console.log(err); }
-
-		var thisList = {};
-		data.split(/\n+/).forEach(function(d) {
-			var wordVal = d.split(/\t/);
-			if ( ! wordVal[0].match(/\w+/) ) { return };
-			thisList[wordVal[0].toLowerCase()] = wordVal[1] | true;
-		});
-		DICTIONARY[game.name] = thisList;
-
-	});
-
-}
-
-
-var Servies = require('./lib/Slack/Services.js'),
-    Game    = require('./lib/Game.js');
+var Services = require('./lib/Slack/Services.js'),
+    Game     = require('./lib/Game.js');
 
 /* channel => new game.js */
 var myName    = 'wordsy',
    theseGames = {};
-var createGame = function( bot, msg ) {
-
+var setName = function( bot ) {
 	try { myName = bot.identity.name }
 	catch (e) { console.log( 'bot has no identity?', e ) }
-
+}
+var createGame = function( bot, msg ) {
+	setName(bot);
 	var services = new Services( { bot: bot, message: msg } );
 	theseGames[msg.channel] = new Game({services: services, name: myName});
-
 }
 
 var init = function() {
 
 	slack.hears('^help', 'direct_mention', function( bot, msg ) {
+
+		setName(bot);
 
 		var helpMsg, helpOpts;
 		if ( msg.text.match(/game/) ) {
@@ -88,40 +63,37 @@ var init = function() {
 	/* create */
 	slack.hears('(^|\\s+)(go|start|begin)$', 'direct_mention', function( bot, msg ) {
 
-		if ( ! theseGames[thisChannel] ) { createGame( bot, msg ); }
-
-		var matches    = msg.text.match(/(the\s+)?game(\s+is\s+|\s*=\s*|\s+)?(\w+)/),
-		    gameName   = matches ? matches[ matches.length - 1] : 'default',
-		    thisConfig = JSON.parse(JSON.stringify( config.games[gameName] || config )),
-		    thisDict   = DICTIONARY[gameName] || DICTIONARY['default'];
-		thisConfig.gameName = gameName;
-
-		var tMatches = msg.text.match(/(the\s+)?timer?(\s+is\s+|\s*=\s*|\s+)?(\d+)/);
-		thisConfig.time = tMatches ? tMatches[ tMatches.length - 1] : 60;
-
-		var mMatches = msg.text.match(/letters(\s+is\s+|\s*=\s*|\s+)?(\d+)/i);
-		thisConfig.size = mMatches ? mMatches[ mMatches.length - 1] : 17;
-
-		/* needs a setter */
-		var wMatches = msg.text.match(/(small(est)?\s+words?|length|word( length)?)(\s+is\s+|\s*=\s*|\s+)?(\d+)/i);
-		thisConfig.MIN_WORD_LENGTH = wMatches ? wMatches[ wMatches.length - 1] : 2;
-
 		var thisChannel = msg.channel;
- 		if ( theseGames[thisChannel].STATE == 'GAME OVER' ) {
-			theseGames[thisChannel].playerLog.words.setDictionary(thisDict);
-			theseGames[thisChannel].runGame(thisConfig);
-		} else {
-			/* this should be a leaky bucket, no spamming */
+		if ( ! theseGames[thisChannel] ) { createGame( bot, msg ); }
+ 		if ( theseGames[thisChannel].STATE != 'GAME OVER' ) {
 			bot.say( { channel: thisChannel, text: 'Game in progress. Try * @' + myName + ' stop game *' } );
+			return;
 		}
+
+		var thisConfig = {};
+
+		var matches       = msg.text.match(/(the\s+)?(game|book)(\s+is\s+|\s*=\s*|\s+)?(\w+)/);
+		thisConfig.book   = matches ? matches[ matches.length - 1] : undefined;
+
+		var tMatches      = msg.text.match(/(the\s+)?timer?(\s+is\s+|\s*=\s*|\s+)?(\d+)/);
+		thisConfig.time   = tMatches ? tMatches[ tMatches.length - 1] : 60;
+
+		var mMatches      = msg.text.match(/letters(\s+is\s+|\s*=\s*|\s+)?(\d+)/i);
+		thisConfig.size   = mMatches ? mMatches[ mMatches.length - 1] : 17;
+
+		var wMatches      = msg.text.match(/(small(est)?\s+words?|length|word( length)?)(\s+is\s+|\s*=\s*|\s+)?(\d+)/i);
+		thisConfig.length = wMatches ? wMatches[ wMatches.length - 1] : 2;
+
+		theseGames[thisChannel].runGame(thisConfig);
 
 	});
 
 	/* stop */
 	slack.hears('^(game\\s+over|(end|stop)(\\s+game)?)', 'direct_mention', function( bot, msg ) {
 		var thisChannel = msg.channel;
+		if ( ! theseGames[thisChannel] ) { createGame( bot, msg ); }
 
-		if ( ! theseGames[thisChannel] || theseGames[thisChannel].GAME_OVER ) {
+		if ( theseGames[thisChannel].GAME_OVER ) {
 			bot.say( { channel: thisChannel, text: "Stop what? There's no game going.." } );
 		} else {
 			theseGames[thisChannel].gameOver();
@@ -129,12 +101,23 @@ var init = function() {
 	})
 
 	slack.hears('^(list\\s+)?(games?|dictionar(y|ies))', 'direct_mention', function( bot, msg ) {
-		if ( ! config.games.length ) { return }
+
+		var thisChannel = msg.channel;
+		if ( ! theseGames[thisChannel] ) { createGame( bot, msg ); }
+
+		var thisGame   = theseGames[thisChannel],
+		    theseBooks = thisGame.dictionary.books || {};
+		if ( ! Object.keys(theseBooks).length ) {
+			bot.say( {channel: thisChannel, text: 'No games loaded yet..' });
+			return;
+		}
+
 		var txt = '';
-		config.games.forEach(function(g) {
+		for ( var key in theseBooks ) {
+			var g = theseBooks[key];
 			txt = txt + g.name + ":\n     " + g.short + "\n"
-		})
-		txt = FORMAT_MSG_FN( txt, 'message' );
+		}
+		txt = thisGame.services.FORMAT_MSG_FN( txt, 'message' );
 		bot.say( { channel: msg.channel, text: txt } );
 	})
 
@@ -178,12 +161,12 @@ var init = function() {
                         { text: ' | ', level: 'plain' },
                         { text: thisGame.gameName + ' game', level: 'italics' }
                 ];
-		thisGame.messaging.SEND_MSG_FN( reps, 'highlight' );
+		thisGame.services.SEND_MSG_FN( reps, 'highlight' );
 
 		if ( ret && ret.reason ) {
 
 			var thisFn;
-			if ( config.EMOJISET == 'mapsmarker' ) {
+			if ( thisGame.emoji == 'mapsmarker' ) {
 
 				var prefix    = ret.points < 0 ? 'negative' : 'positive',
 				    thisEmoji = prefix + '_number_' + Math.abs(ret.points);
@@ -219,9 +202,4 @@ var init = function() {
 
 }
 
-var theseGames = config.games || {};
-for ( var key in config.games ) {
-	var toLoad = config.games[key];
-	loadDictionary(toLoad);
-}
 init();

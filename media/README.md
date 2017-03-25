@@ -4,7 +4,7 @@ Unzip the numbers_emoji.zip file, upload each seperately, I know!, here:
 
 	https://<your subdomain>.slack.com/customize/emoji
 
-Set EMOJISET: mapsmarker in your config file.
+Set emojiset: mapsmarker in your config file.
 
 	see [link](https://mapicons.mapsmarker.com/numbers-letters/numbers)
 	Thanks for this!
@@ -31,7 +31,7 @@ To do this for yourself, in Chrome, do the following:
 
 ## Create your own
 
-You can create your own emojis, make sure you set "EMOJISET: mapsmarker" in your config file. Be creative and have fun!
+You can create your own emojis, make sure you set "emojiset: mapsmarker" in your config file. Be creative and have fun!
 
 Here's all the files you'll need:
 
