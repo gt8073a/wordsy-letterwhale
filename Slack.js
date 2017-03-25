@@ -1,30 +1,15 @@
 #!/usr/bin/env node
 
-var Config = require('yaml-configuration-loader'),
-    config = Config.load( process.env.CONFIG || ( __dirname + '/config/default.yaml' ) );
+var Config      = require('yaml-configuration-loader'),
+    credentials = Config.load( process.env.CREDENTIALS || ( __dirname + '/config/slack_credentials.yaml' ) );
 
-    config.NAME     = config.NAME || 'wordsy';
-    config.EMOJISET = config.EMOJISET || 'default';
-
-/* in yaml, games are an array, switch to a hash */
-if ( config.games instanceof Array ) {
-	var theseConfigGames = {};
-	config.games.forEach(function(g) {
-		if ( ! g.name ) { return };
-		theseConfigGames[g.name] = g
-	})
-	config.games = theseConfigGames
-}
-
-var myName = config.NAME,
-    debug  = process.env.DEBUG || false;
-
+var debug  = process.env.DEBUG || false;
 var Botkit  = require('botkit'),
     slack   = Botkit.slackbot({ debug: debug }),
     spawn   = slack.spawn({
-                        token: config.BOTKIT_TOKEN,
+                        token: credentials.BOTKIT_TOKEN,
                         "incoming_webhook": {
-                                'url': config.BOTKIT_URL
+                                'url': credentials.BOTKIT_URL
                         }
                 });
 
@@ -54,110 +39,21 @@ var loadDictionary = function( game ) {
 
 }
 
-var decorators = {
-	'message':   ['```','```'],
-	'highlight': ['`','`'],
-	'alert':     ['<!channel> *','*'],
-	'bold':      ['*','*'],
-	'italics':   ['_','_'],
-	'plain':     ['','']
- }
 
-var FORMAT_MSG_FN  = function( txt, level ) {
-
-	level = level || 'message';
-	if ( typeof level == 'string' ) {
-		level = level.split('|')
-	}
-
-	var ret = txt;
-	level.forEach(function(l) {
-		if ( ! decorators[l] ) {
-			l = 'message'
-		};
-		var pre = decorators[l][0],
-		    app = decorators[l][1];
-		ret = pre + ret + app;
-	})
-
-	return ret;
-};
-
-var MULTI_FORMAT_FN = function( msgs, level ) {
-	msgs  = msgs  || [];
-	level = level || 'plain';
-	var str = '';
-	msgs.forEach(function(msg) {
-		var txt = msg.text,
-		    lvl = msg.level || level,
-		    fmt = FORMAT_MSG_FN( txt, lvl );
-		str = str + fmt
-	})
-	return str;
-}
-
-var FORMAT_PREPPER = function( txt, level, fn ) {
-	var thisMsg;
-	level = level || 'message';
-	fn    = fn    || function() { return true };
-	if ( typeof txt == 'string' ) {
-		if ( typeof level == 'function' ) {
-			fn    = level;
-			level = 'message';
-		}
-		thisMsg = FORMAT_MSG_FN( txt, level );
-	} else if ( txt instanceof Array ) {
-		thisMsg = MULTI_FORMAT_FN( txt, level );
-		level = 'plain'
-	}
-	return { text: thisMsg, level: level, fn: fn };
-}
-
-var Game = require('./lib/Game.js');
+var Servies = require('./lib/Slack/Services.js'),
+    Game    = require('./lib/Game.js');
 
 /* channel => new game.js */
-var theseGames = {};
+var myName    = 'wordsy',
+   theseGames = {};
 var createGame = function( bot, msg ) {
-	var thisConf       = JSON.parse(JSON.stringify(config));
 
-	thisConf.messaging = {};
-	thisConf.messaging._prepper        = FORMAT_PREPPER;
-	thisConf.messaging.FORMAT_MSG_FN   = FORMAT_MSG_FN;
-	thisConf.messaging.MULTI_FORMAT_FN = MULTI_FORMAT_FN;
+	try { myName = bot.identity.name }
+	catch (e) { console.log( 'bot has no identity?', e ) }
 
-	thisConf.messaging.SEND_MSG_FN    = function( txt, level, fn ) {
-						var obj = thisConf.messaging._prepper( txt, level, fn );
-						bot.say( { channel: msg.channel, text: obj.text }, function(error,response) {
-							if ( error ) { console.log( 'thisConf.messaging.SEND_MSG_FN', error ) };
-							obj.fn( bot, response );
-						});
-				   };
+	var services = new Services( { bot: bot, message: msg } );
+	theseGames[msg.channel] = new Game({services: services, name: myName});
 
-	thisConf.messaging.UPDATE_MSG_FN = function( bot, response, txt, level, fn  ) {
-						var obj = thisConf.messaging._prepper( txt, level, fn );
-						bot.api.chat.update({ ts: response.ts, channel: response.channel, text: obj.text }, function( error, resp ) {
-							if ( error ) { console.log( 'thisConf.messaging.UPDATE_MSG_FN', error ) };
-							obj.fn( bot, resp );
-						})
-	}
-
-	thisConf.messaging.SET_TOPIC_FN    = function( txt, level, fn ) {
-						var obj = thisConf.messaging._prepper( txt, level, fn )
-						bot.api.channels.setTopic({ channel: msg.channel, topic: obj.text } , function(error, resp) {
-							if ( error ) { console.log( 'thisConf.messaging.SET_TOPIC_FN', error ) };
-							obj.fn( bot, resp );
-						})
-	}
-
-	thisConf.services = {};
-	thisConf.services.LOOKUP_PLAYER_NAME = function( id, fn ) {
-						bot.api.users.info({user: id}, function(error, userResponse) {
-							if ( error ) { console.log( 'thisConf.messaging.LOOKUP_PLAYER_NAME', error ) };
-							fn( id, userResponse.user.name );
-						})
-				   };
-
-	theseGames[msg.channel] = new Game(thisConf);
 }
 
 var init = function() {
@@ -172,8 +68,7 @@ var init = function() {
 					+ "To set the time of the game, defaults to 60 sec:\n   timer 123\n"
 					+ "Example:\n      @" + myName + " smallest word 5 timer 30 go\n"
 		} else {
-			helpMsg  = myName + " is a word game. I'll show you letters, you make words.\n"
-					      + "  You get " + ( config.TIME_OF_GAME || 60 ) + " seconds.\n"
+			helpMsg  = myName + " is a timed word game. I'll show you letters, you make words.\n"
 					      + "  Good Words earn you points.\n"
 					      + "  Bad Words earn you negative points.\n"
 					      + "  Dupes earn you a lot of negative points.\n",
@@ -181,9 +76,6 @@ var init = function() {
 				      + "To play a word in a game:\n  "                  + " type it in and hit return\n"
 				      + "To see all the games:\n   @"           + myName + " dictionaries\n"
 				      + "To end a game early:\n   @"            + myName + " game over\n"
-				      + "To see time left in a game:\n   @"     + myName + " time left\n"
-				      + "To see the scoreboard:\n   @"          + myName + " score\n"
-				      + "To see the letters in a game:\n   @"   + myName + " letters\n";
 		}
 
 		helpOpts.replace( / /, 0xC2, 'g' );
@@ -233,27 +125,6 @@ var init = function() {
 			bot.say( { channel: thisChannel, text: "Stop what? There's no game going.." } );
 		} else {
 			theseGames[thisChannel].gameOver();
-		}
-	})
-
-	/* time */
-	slack.hears('^time(\\s+left)?', 'direct_mention', function( bot, msg ) {
-		var thisChannel = msg.channel;
-		if ( ! theseGames[thisChannel] ) {
-			bot.say( { channel: msg.channel, text: "There's no game, there's no time." } );
-		} else {
-			var time = theseGames[thisChannel].getTimeLeft();
-			theseGames[thisChannel].messaging.SEND_MSG_FN( time, 'plain' );
-		}
-	})
-
-	/* score */
-	slack.hears('^(game\\s+)?score', 'direct_mention', function( bot, msg ) {
-		var thisChannel = msg.channel;
-		if ( ! theseGames[thisChannel] ) {
-			bot.say( { channel: msg.channel, text: "There's no game, there's no score. Sheesh.." } );
-		} else {
-			theseGames[thisChannel].scoreBoard();
 		}
 	})
 

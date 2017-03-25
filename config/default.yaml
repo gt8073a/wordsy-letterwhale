@@ -1,3 +1,1 @@
-BOTKIT_TOKEN: <change me, see https://my.slack.com/services/new/bot>
-BOTKIT_URL: <change me, see https://my.slack.com/services/new/incoming-webhook/>
 dictionary: /usr/share/dict/web2
