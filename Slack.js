@@ -36,27 +36,46 @@ var init = function() {
 		setName(bot);
 
 		var helpMsg, helpOpts;
+		var thisMsg;
 		if ( msg.text.match(/game/) ) {
-			helpMsg  = "To start a game:\n   @" + myName + " go\n",
-			helpOpts = "To set the smallest size a word can be to get points:\n   smallest word 123\n"
-					+ "To set the number of letters, defaults to 17:\n   letters 123\n"
-					+ "To set the time of the game, defaults to 60 sec:\n   timer 123\n"
-					+ "Example:\n      @" + myName + " smallest word 5 timer 30 go\n"
+			thisMsg = {
+				channel: msg.channel,
+				mrkdwn: true,
+				attachments: [
+					{
+						title: myName + ' is a timed word game. I show letters, you make words.',
+						text: "To start a game:\n"
+							+ " _ @" + myName + " go_\n"
+							+ " _ @" + myName + " game is french timer is 30 go_\n"
+							+ " _ @" + myName + " smallest word 5 letters 20 go_",
+						mrkdwn_in: ['text']
+					},
+
+					{ mrkdwn_in: ['text'], text: "To set the smallest size a word can be to get points:\n *-* _ smallest word 123_" },
+					{ mrkdwn_in: ['text'], text: "To set the number of letters, defaults to 17:\n *-* _ letters 123_" },
+					{ mrkdwn_in: ['text'], text: "To set the dictionary for the game:\n *-* _ game is spanish_" },
+					{ mrkdwn_in: ['text'], text: "To set the time of the game, defaults to 60 sec:\n *-* _ timer 123_" },
+				]
+			}
 		} else {
-			helpMsg  = myName + " is a timed word game. I'll show you letters, you make words.\n"
-					      + "  Good Words earn you points.\n"
-					      + "  Bad Words earn you negative points.\n"
-					      + "  Dupes earn you a lot of negative points.\n",
-			helpOpts = "To start a game ( see help game for more ):\n   @"                 + myName + " go\n"
-				      + "To play a word in a game:\n  "                  + " type it in and hit return\n"
-				      + "To see all the games:\n   @"           + myName + " dictionaries\n"
-				      + "To end a game early:\n   @"            + myName + " game over\n"
+			thisMsg = {
+				channel: msg.channel,
+				mrkdwn: true,
+				attachments: [
+					{
+						title: myName + ' is a timed word game. I show letters, you make words.',
+						text: "*-* Good Words earn points.\n*-* Bad Words lose points.\n*-* Dupes lose *a lot* of points.\n",
+						mrkdwn_in: ['text']
+					},
+					{ mrkdwn_in: ['text'], text: "To start a game ( see help game ):\n  _ @" + myName + " go_" },
+					{ mrkdwn_in: ['text'], text: "To play a word in a game:\n  _ type it in and hit return_" },
+					{ mrkdwn_in: ['text'], text: "To see all the games:\n  _ @" + myName + " dictionaries_" },
+					{ mrkdwn_in: ['text'], text: "To end a game early:\n  _ @" + myName + " game over_" }
+				]
+			}
 		}
 
-		helpOpts.replace( / /, 0xC2, 'g' );
-
-		var help = '```' + helpMsg + helpOpts + '```';
-		bot.say( { channel: msg.channel, text: help } );
+		bot.say( thisMsg );
 
 	})
 
