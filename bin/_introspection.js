@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 
 var Config      = require('yaml-configuration-loader'),
-    credentials = Config.load( process.env.CREDENTIALS || ( __dirname + '/config/slack_credentials.yaml' ) );
+    credentials = Config.load( process.env.CREDENTIALS || ( __dirname + '/../config/slack_credentials.yaml' ) );
 
 var debug  = process.env.DEBUG || false;
 var Botkit  = require('botkit'),
