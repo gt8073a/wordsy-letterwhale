@@ -180,7 +180,7 @@ var init = function() {
                         { text: ' | ', level: 'plain' },
                         { text: thisGame.gameName + ' game', level: 'italics' }
                 ];
-		thisGame.services.SEND_MSG_FN( reps, 'highlight' );
+		thisGame.services.SEND_MSG_FN( {text: reps, level: 'highlight'} );
 
 		if ( ret && ret.reason ) {
 
